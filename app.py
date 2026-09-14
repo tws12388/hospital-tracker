@@ -121,35 +121,42 @@ FONT_CANDIDATES = [
 
 
 def register_pdf_fonts():
-    """依優先順序註冊可顯示中文的 PDF 字型；全部失敗則安全退回內建字型，絕不崩潰。"""
-    cached = st.session_state.get("_pdf_font_status")
-    if cached is not None:
-        return cached
+    FONT_NAME = "Helvetica"
+FONT_NAME_BOLD = "Helvetica-Bold"
 
+def register_pdf_fonts():
+    """註冊中文字型，支援 Linux 雲端環境與 Windows 本機環境。"""
     global FONT_NAME, FONT_NAME_BOLD
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import os
 
-    for candidate in FONT_CANDIDATES:
-        reg_path = next((p for p in candidate["regular"] if os.path.exists(p)), None)
-        if not reg_path:
-            continue
-        try:
-            pdfmetrics.registerFont(TTFont(FONT_NAME, reg_path))
-        except Exception:
-            continue
+    # 依序尋找：Linux 雲端中文字型 -> Windows 本機中文字型
+    font_candidates = [
+        # Linux (Streamlit Cloud 透過 packages.txt 安裝的文泉驛正黑體)
+        ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", "ZenHei"),
+        ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", "NotoCJK"),
+        # Windows 本機環境
+        ("C:\\Windows\\Fonts\\msjh.ttc", "MSJH"),
+        ("C:\\Windows\\Fonts\\msjh.ttf", "MSJH"),
+        ("C:\\Windows\\Fonts\\kaiu.ttf", "KAIU"),
+    ]
 
-        bold_path = next((p for p in candidate["bold"] if os.path.exists(p)), None)
-        try:
-            if bold_path:
-                pdfmetrics.registerFont(TTFont(FONT_NAME_BOLD, bold_path))
-            else:
-                raise FileNotFoundError("無獨立粗體字型檔")
-        except Exception:
-            pdfmetrics.registerFont(TTFont(FONT_NAME_BOLD, reg_path))
+    for font_path, font_alias in font_candidates:
+        if os.path.exists(font_path):
+            try:
+                pdfmetrics.registerFont(TTFont(font_alias, font_path))
+                # 粗體與常規皆套用同一套中文字型，避免 ReportLab 找不到對應粗體而崩潰
+                FONT_NAME = font_alias
+                FONT_NAME_BOLD = font_alias
+                return True, f"已成功載入中文字型：{font_alias}"
+            except Exception:
+                continue
 
-        status = (True, candidate["label"])
-        st.session_state["_pdf_font_status"] = status
-        return status
-
+    # 若皆找不到，安全退回英文字型
+    FONT_NAME = "Helvetica"
+    FONT_NAME_BOLD = "Helvetica-Bold"
+    return False, "找不到可用的中文字型，PDF 中的中文可能無法正確顯示"
     FONT_NAME = "Helvetica"
     FONT_NAME_BOLD = "Helvetica-Bold"
     status = (False, "找不到可用的中文字型（已嘗試微軟正黑體、標楷體、內附字型），PDF 中的中文可能無法正確顯示")
