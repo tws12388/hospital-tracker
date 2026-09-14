@@ -866,12 +866,12 @@ with export_col1:
         use_container_width=True,
     )
 with export_col2:
-try:
-    pdf_bytes, pdf_font_ok, pdf_font_label = generate_weekly_report_pdf(all_data)
-except Exception as e:
-    pdf_bytes = None
-    pdf_font_ok = False
-    pdf_font_label = f"PDF 模組載入異常（但不影響系統運作）: {e}"
+    try:
+        pdf_bytes, pdf_font_ok, pdf_font_label = generate_weekly_report_pdf(all_data)
+    except Exception as e:
+        pdf_bytes = None
+        pdf_font_ok = False
+        pdf_font_label = f"PDF 模組載入異常（但不影響系統運作）: {e}"
     st.download_button(
         "📄 產製週報 PDF",
         data=pdf_bytes,
